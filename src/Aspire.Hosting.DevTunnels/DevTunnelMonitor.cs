@@ -466,10 +466,18 @@ internal sealed class DevTunnelMonitor : IDisposable, IAsyncDisposable
         {
             var content = entry.Content;
             var canWarn = true;
+            if (!content.Contains(DiagnosticPrefix, StringComparison.Ordinal))
+            {
+                _notifications.TryGetCurrentState(_resource.Name, out var diagState);
+                var diagParsed = TimestampParser.TryParseConsoleTimestamp(content, out var diagTs);
+                _logger.LogInformation(DiagnosticPrefix + "DIAG entry parsed={Parsed} ts={Ts:O} runStartedAt={RunStartedAt:O} snapshotStart={SnapshotStart:O} state={State} text={Text}",
+                    diagParsed, diagParsed ? diagTs!.Value.Timestamp : (DateTimeOffset?)null, run.StartedAt, diagState?.Snapshot.StartTimeStamp, diagState?.Snapshot.State?.Text, diagParsed ? diagTs!.Value.ModifiedText : content);
+            }
             if (TimestampParser.TryParseConsoleTimestamp(content, out var parsed))
             {
                 if (parsed.Value.Timestamp < run.StartedAt)
                 {
+                    _logger.LogInformation(DiagnosticPrefix + "DIAG dropped: before run start");
                     continue;
                 }
                 content = parsed.Value.ModifiedText;
@@ -482,6 +490,7 @@ internal sealed class DevTunnelMonitor : IDisposable, IAsyncDisposable
                 {
                     if (parsed.Value.Timestamp.UtcDateTime < startedAt)
                     {
+                        _logger.LogInformation(DiagnosticPrefix + "DIAG dropped: before DCP StartTimeStamp {StartedAt:O}", startedAt);
                         continue;
                     }
                 }
@@ -573,6 +582,8 @@ internal sealed class DevTunnelMonitor : IDisposable, IAsyncDisposable
 
     private async Task PublishAsync(Run run)
     {
+        _logger.LogInformation(DiagnosticPrefix + "DIAG publish connected={Connected} ports={Ports} expected={Expected} endpointEvents={Events} allocated={Allocated}",
+            run.Connected, string.Join(",", run.Ports.Keys), string.Join(",", run.ExpectedPorts.Values), _endpointEvents.Count, _allocatedEndpoints.Count);
         if (run.Connected && run.ExpectedPorts.Values.All(run.Ports.ContainsKey))
         {
             run.HostReady.TrySetResult();

@@ -15,7 +15,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Aspire.Hosting.DevTunnels.Tests;
 
-public class DevTunnelResourceBuilderExtensionsTests
+public class DevTunnelResourceBuilderExtensionsTests(ITestOutputHelper testOutputHelper)
 {
     [Fact]
     public async Task WithReference_InjectsServiceDiscoveryEnvironmentVariablesWhenReferencingOtherResourcesViaTheTunnel()
@@ -714,7 +714,7 @@ public class DevTunnelResourceBuilderExtensionsTests
             }
         };
         var (command, arguments) = GetLongRunningCommand();
-        using var builder = TestDistributedApplicationBuilder.Create();
+        using var builder = TestDistributedApplicationBuilder.Create(testOutputHelper);
         var tunnelCommand = OperatingSystem.IsWindows() ? command : "/bin/sh";
         builder.Configuration["ASPIRE_DEVTUNNEL_CLI_PATH"] = tunnelCommand;
         if (useConsoleOutput)
